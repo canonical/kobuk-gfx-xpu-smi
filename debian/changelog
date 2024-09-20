@@ -1,0 +1,16 @@
+xpu-smi (1.2.35-0ubuntu1~24.10~ppa1) oracular; urgency=medium
+
+  [ Pavel Androniychuk ]
+  * build libraries.compute.xpu-manager.build-plan-ci-main-60
+
+  [ Pedro Kopper ]
+  * Update files to match PPA names
+  * Add libigsc0 as dependency 
+
+ -- Pedro Kopper <pedro.kopper@canonical.com>  Mon, 09 Sep 2024 22:55:08 -0300
+
+xpu-smi (1.0) experimental; urgency=medium
+
+    * First Release
+
+ -- Pavel Androniychuk <pavel.androniychuk@intel.com>  Wed, 31 Aug 2022 15:46:02 -0800
