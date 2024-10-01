@@ -1,3 +1,9 @@
+xpu-smi (1.2.35-0ubuntu1~24.10~ppa2) oracular; urgency=medium
+
+  * Changed dependency to intel-gsc 
+
+ -- Shane McKee <shane.mckee@canonical.com>  Tue, 01 Oct 2024 21:59:03 +0800
+
 xpu-smi (1.2.35-0ubuntu1~24.10~ppa1) oracular; urgency=medium
 
   [ Pavel Androniychuk ]
