@@ -499,30 +499,6 @@ namespace xpum {
         }
     }
 
-    bool isPhysicalFunctionDevice(std::string pci_addr) {
-        DIR *dir;
-        struct dirent *ent;
-        std::stringstream ss;
-        ss << "/sys/bus/pci/devices/" << pci_addr;
-        dir = opendir(ss.str().c_str());
-        
-        if (dir == NULL) {
-            return false;
-        }
-        while ((ent = readdir(dir)) != NULL) {
-            /*
-                Containing `physfn` which links to the PF it belongs to
-                means it's a VF, otherwise it's a PF.
-            */
-            if (strstr(ent->d_name, "physfn") != NULL) {
-                closedir(dir);
-                return false;
-            }
-        }
-        closedir(dir);
-        return true;
-    }
-
     bool isATSMPlatform(std::string str) {
         std::transform(str.begin(), str.end(), str.begin(), ::tolower);
         return str.find("56c0") != std::string::npos || str.find("56c1") != std::string::npos || str.find("56c2") != std::string::npos;
@@ -564,7 +540,7 @@ namespace xpum {
             std::string line(c_line);
             is_atsm_platform = isATSMPlatform(line);
             std::string bdf = line.substr(0, 12);
-            if (isPhysicalFunctionDevice(bdf)) {
+            if (GPUDeviceStub::isPhysicalFunctionDevice(bdf)) {
                 gpu_ids.push_back(std::to_string(gpu_id));
                 gpu_bdfs.push_back(bdf);
                 xpum_precheck_component_info_t gpu_component {};
@@ -583,7 +559,6 @@ namespace xpum {
         if (gpu_bdfs.empty()) {
             pdir = opendir("/sys/class/drm");
             if (pdir != NULL) {
-                char uevent[1024];
                 while ((pdirent = readdir(pdir)) != NULL) {
                     if (pdirent->d_name[0] == '.') {
                         continue;
@@ -597,41 +572,22 @@ namespace xpum {
                     if (strstr(pdirent->d_name, "-") != NULL) {
                         continue;
                     }
-                    snprintf(path, PATH_MAX, "/sys/class/drm/%s/device/uevent", pdirent->d_name);
-                    int fd = open(path, O_RDONLY);
-                    if (fd < 0) {
+                    UEvent uevent;
+                    if (Utility::getUEvent(uevent, pdirent->d_name) == false) {
                         continue;
                     }
-                    int cnt = read(fd, uevent, 1024);
-                    if (cnt < 0 || cnt >= 1024) {
-                        close(fd);
-                        continue;
-                    }
-                    close(fd);
-                    uevent[cnt] = 0;
-                    std::string str(uevent);
-                    std::string key = "PCI_ID=8086:";
-                    auto pos = str.find(key); 
-                    if (pos != std::string::npos) {
-                        std::string device_id = str.substr(pos + key.length(), 4);
-                        is_atsm_platform = isATSMPlatform(device_id);
-                        std::string bdf_key = "PCI_SLOT_NAME=";
-                        auto bdf_pos = str.find(bdf_key); 
-                        if (bdf_pos != std::string::npos) {
-                            std::string bdf = str.substr(bdf_pos + bdf_key.length(), 12);
-                            if (isPhysicalFunctionDevice(bdf)) {
-                                gpu_ids.push_back(std::string(pdirent->d_name).substr(4));
-                                gpu_bdfs.push_back(bdf);
-                                xpum_precheck_component_info_t gpu_component {};
-                                gpu_component.componentType = XPUM_PRECHECK_COMPONENT_TYPE_GPU;
-                                gpu_component.status = has_privilege ? XPUM_PRECHECK_COMPONENT_STATUS_PASS : XPUM_PRECHECK_COMPONENT_STATUS_UNKNOWN;
-                                gpu_component.errorDetail[0] = '\0';
-                                gpu_component.time[0] = '\0';
-                                strncpy(gpu_component.bdf, bdf.c_str(), bdf.size() + 1);
-                                gpu_component.bdf[sizeof(gpu_component.bdf) - 1] = '\0';
-                                PrecheckManager::component_gpus.push_back(gpu_component);
-                            }
-                        }
+                    is_atsm_platform = isATSMPlatform(uevent.pciId);
+                    if (GPUDeviceStub::isPhysicalFunctionDevice(uevent.bdf)) {
+                        gpu_ids.push_back(std::string(pdirent->d_name).substr(4));
+                        gpu_bdfs.push_back(uevent.bdf);
+                        xpum_precheck_component_info_t gpu_component {};
+                        gpu_component.componentType = XPUM_PRECHECK_COMPONENT_TYPE_GPU;
+                        gpu_component.status = has_privilege ? XPUM_PRECHECK_COMPONENT_STATUS_PASS : XPUM_PRECHECK_COMPONENT_STATUS_UNKNOWN;
+                        gpu_component.errorDetail[0] = '\0';
+                        gpu_component.time[0] = '\0';
+                        strncpy(gpu_component.bdf, uevent.bdf.c_str(), uevent.bdf.size() + 1);
+                        gpu_component.bdf[sizeof(gpu_component.bdf) - 1] = '\0';
+                        PrecheckManager::component_gpus.push_back(gpu_component);
                     }
                 }
                 closedir(pdir);
@@ -726,7 +682,7 @@ namespace xpum {
 
     xpum_result_t PrecheckManager::precheck(xpum_precheck_component_info_t resultList[], int *count, xpum_precheck_options options) {
         xpum_precheck_log_source logSource = XPUM_PRECHECK_LOG_SOURCE_JOURNALCTL;
-        readConfigFile();
+        readConfigFile(XPUM_GLOBAL_CONFIG_FILE);
         XPUM_LOG_INFO("log source: {}, log file: {}", PrecheckManager::KERNEL_MESSAGES_SOURCE, PrecheckManager::KERNEL_MESSAGES_FILE);
         if (PrecheckManager::KERNEL_MESSAGES_SOURCE == "file")  {
             if (!isPathExist(PrecheckManager::KERNEL_MESSAGES_FILE))

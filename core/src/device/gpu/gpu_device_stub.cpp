@@ -158,17 +158,13 @@ std::shared_ptr<MeasurementData> GPUDeviceStub::loadPVCIdlePowers(std::string bd
                 if (strstr(pdirent->d_name, "-") != NULL) {
                     continue;
                 }
-                std::string uevent = getFileValue("/sys/class/drm/" + std::string(pdirent->d_name) +"/device/uevent");
-                std::string key = "PCI_ID=8086:";
-                auto pos = uevent.find(key); 
-                if (pos != std::string::npos) {
-                    std::string bdf_key = "PCI_SLOT_NAME=";
-                    auto bdf_pos = uevent.find(bdf_key); 
-                    if (bdf_pos != std::string::npos) {
-                        auto device_id = uevent.substr(pos + key.length(), 4);
-                        if (device_id.compare(0, 3, "0BD") == 0 || device_id.compare(0, 3, "0BE") == 0 || device_id.compare(0, 3, "0B6") == 0)
-                            pvc_gpu_bdfs.insert(uevent.substr(bdf_pos + bdf_key.length(), 12));
-                    }
+                UEvent uevent;
+                if (Utility::getUEvent(uevent, pdirent->d_name) == true) {
+                    if (uevent.pciId.compare(0, 3, "0BD") == 0 ||
+                        uevent.pciId.compare(0, 3, "0BE") == 0 ||
+                        uevent.pciId.compare(0, 3, "0B6") == 0) {
+                        pvc_gpu_bdfs.insert(uevent.bdf);
+                    } 
                 }
             }
             closedir(pdir);
@@ -745,14 +741,8 @@ static std::string getI915Version() {
     return ret;
 }
 
-static std::string getDriverVersion() {
+static std::string getDriverPackVersion() {
     std::string version;
-    // Try to get i915 backported version from sysfs first
-    version = getI915Version();
-    if (version.length() > 0) {
-        return version;
-    }
-
     std::string release;
     std::string name = "intel-i915-dkms";
     std::string rpm_cmd = "rpm -qa 2>/dev/null| grep " + name + " 2>/dev/null";
@@ -764,12 +754,12 @@ static std::string getDriverVersion() {
             return version;
         }
         pos1 += name.length();
-        pos1 = strData.find_first_of("0123456789",pos1);
-        auto pos2 = strData.find_first_of("-",pos1);
-        version = strData.substr(pos1,pos2-pos1);
+        pos1 = strData.find_first_of("0123456789", pos1);
+        auto pos2 = strData.find_first_of("-", pos1);
+        version = strData.substr(pos1, pos2 - pos1);
         pos1 = pos2 + 1;
-        pos2 = strData.find_first_of(".",pos1);
-        release = strData.substr(pos1,pos2-pos1);
+        pos2 = strData.find_first_of(".", pos1);
+        release = strData.substr(pos1, pos2 - pos1);
         version = version + "-" + release;
     } else {
         std::string deb_cmd = "dpkg -l 2>/dev/null| grep " + name + " 2>/dev/null";
@@ -787,6 +777,16 @@ static std::string getDriverVersion() {
         }
     }
     return version;
+}
+
+static std::string getDriverVersion() {
+    std::string version;
+    // Try to get i915 backported version from sysfs first
+    version = getI915Version();
+    if (version.length() > 0) {
+        return version;
+    }
+    return getDriverPackVersion();
 }
 
 static std::string getKernelVersion() {
@@ -825,6 +825,37 @@ static xpum_device_function_type_t getGPUFunctionType(std::string pci_addr) {
     }
     closedir(dir);
     return DEVICE_FUNCTION_TYPE_PHYSICAL;
+}
+
+bool GPUDeviceStub::isPhysicalFunctionDevice(std::string pci_addr) {
+    if (getGPUFunctionType(pci_addr) == DEVICE_FUNCTION_TYPE_VIRTUAL)
+        return false;
+    return true;
+}
+
+bool GPUDeviceStub::hasVirtualFunctionOnDevice(const zes_device_handle_t &zes_device) {
+    ze_result_t res;
+    zes_pci_properties_t pci_props = {};
+    XPUM_ZE_HANDLE_LOCK(zes_device, res = zesDevicePciGetProperties(zes_device, &pci_props));
+    if (res != ZE_RESULT_SUCCESS) {
+        return false;
+    }
+    std::string bdf_address = to_string(pci_props.address);
+    if (!GPUDeviceStub::isPhysicalFunctionDevice(bdf_address))
+        return false;
+
+    std::string line;
+    std::string fname = "/sys/bus/pci/devices/" + bdf_address + "/" + "sriov_numvfs";
+    std::ifstream file(fname);
+    if (file.is_open()) {
+        getline(file, line);
+        file.close();
+    }
+    XPUM_LOG_DEBUG("{} is {}", fname, line);
+    if (line.size() > 0 && line != "0") {
+        return true;
+    }
+    return false;
 }
 
 void GPUDeviceStub::addCapabilities(zes_device_handle_t device, const ze_device_properties_t& props, std::vector<DeviceCapability>& capabilities) {
@@ -1166,6 +1197,7 @@ std::shared_ptr<std::vector<std::shared_ptr<Device>>> GPUDeviceStub::toDiscover(
                 // p_gpu->addProperty(Property(DeviceProperty::BOARD_NUMBER,std::string(props.boardNumber)));
                 // p_gpu->addProperty(Property(DeviceProperty::BRAND_NAME,std::string(props.brandName)));
                 p_gpu->addProperty(Property(XPUM_DEVICE_PROPERTY_INTERNAL_DRIVER_VERSION, getDriverVersion()));
+                p_gpu->addProperty(Property(XPUM_DEVICE_PROPERTY_INTERNAL_DRIVER_PACK_VERSION, getDriverPackVersion()));
                 p_gpu->addProperty(Property(XPUM_DEVICE_PROPERTY_INTERNAL_LINUX_KERNEL_VERSION, getKernelVersion()));
                 p_gpu->addProperty(Property(XPUM_DEVICE_PROPERTY_INTERNAL_SERIAL_NUMBER, std::string(props.boardNumber)));
                 p_gpu->addProperty(Property(XPUM_DEVICE_PROPERTY_INTERNAL_VENDOR_NAME, std::string(props.vendorName)));
@@ -1349,9 +1381,7 @@ std::shared_ptr<std::vector<std::shared_ptr<Device>>> GPUDeviceStub::toDiscover(
 }
 
 std::string GPUDeviceStub::getDRMDevice(const zes_pci_properties_t& pci_props) {
-    char path[PATH_MAX];
     char buf[128];
-    char uevent[1024];
     DIR *pdir = NULL;
     struct dirent *pdirent = NULL;
     int len = 0;
@@ -1372,25 +1402,14 @@ std::string GPUDeviceStub::getDRMDevice(const zes_pci_properties_t& pci_props) {
         if (strstr(pdirent->d_name, "-") != NULL) {
             continue;
         }
-        len = snprintf(path, PATH_MAX, "/sys/class/drm/%s/device/uevent",
-                pdirent->d_name);
-        if (len <= 0 || len >= PATH_MAX) {
-            break;
+        UEvent uevent;
+        if (Utility::getUEvent(uevent, pdirent->d_name) == false) {
+            continue;
         }
-        int fd = open(path, O_RDONLY);
-        if (fd < 0) {
-            break;
-        }
-        int szRead = read(fd, uevent, 1024);
-        close(fd);
-        if (szRead < 0 || szRead >= 1024) {
-            break;
-        }
-        uevent[szRead] = 0;
         len = snprintf(buf, 128, "%04d:%02x:%02x.%x",
                 pci_props.address.domain, pci_props.address.bus,
                 pci_props.address.device, pci_props.address.function);
-        if (len > 0 && strstr(uevent, buf) != NULL) {
+        if (len > 0 && strstr(uevent.bdf.c_str(), buf) != NULL) {
             ret = "/dev/dri/";
             ret += pdirent->d_name;
             break;
@@ -1952,8 +1971,7 @@ std::shared_ptr<MeasurementData> GPUDeviceStub::toGetMemoryThroughputAndBandwidt
 
                 zes_mem_bandwidth_t mem_bandwidth = {};
                 XPUM_ZE_HANDLE_LOCK(mem, res = zesMemoryGetBandwidth(mem, &mem_bandwidth));
-                if (res == ZE_RESULT_SUCCESS && 
-                        mem_bandwidth.maxBandwidth > 0) {
+                if (res == ZE_RESULT_SUCCESS) {
                     uint32_t subdeviceId = UINT32_MAX;
                     if (props.onSubdevice) {
                         subdeviceId = props.subdeviceId;
@@ -1966,7 +1984,9 @@ std::shared_ptr<MeasurementData> GPUDeviceStub::toGetMemoryThroughputAndBandwidt
                     ret->setSubdeviceAdditionalData(subdeviceId, MeasurementType::METRIC_MEMORY_WRITE_THROUGHPUT, mem_bandwidth.writeCounter / 1024 * 1000, 1, true, mem_bandwidth.timestamp / 1000);
                     // The 100 for percentage and the first 1000 for mili seconds to seconds in the next comment code, but to overcome the possible overflow we use the next line of comment code
                     // ret->setSubdeviceAdditionalData(subdeviceId, MeasurementType::METRIC_MEMORY_BANDWIDTH, 100 * (mem_bandwidth.readCounter + mem_bandwidth.writeCounter) / mem_bandwidth.maxBandwidth * 1000, 1, true, mem_bandwidth.timestamp / 1000);
-                    ret->setSubdeviceAdditionalData(subdeviceId, MeasurementType::METRIC_MEMORY_BANDWIDTH, 100 * (mem_bandwidth.readCounter / 1000 + mem_bandwidth.writeCounter / 1000) / (mem_bandwidth.maxBandwidth / 1000) * 1000, 1, true, mem_bandwidth.timestamp / 1000);
+                    if (mem_bandwidth.maxBandwidth > 0) { 
+                        ret->setSubdeviceAdditionalData(subdeviceId, MeasurementType::METRIC_MEMORY_BANDWIDTH, 100 * (mem_bandwidth.readCounter / 1000 + mem_bandwidth.writeCounter / 1000) / (mem_bandwidth.maxBandwidth / 1000) * 1000, 1, true, mem_bandwidth.timestamp / 1000);
+                    }
                     data_acquired = true;
                 } else {
                     exception_msgs["zesMemoryGetBandwidth"] = res;
@@ -2926,9 +2946,7 @@ static bool getCardIdx(uint32_t &card_idx, const zes_device_handle_t& device) {
         return false;
     }
 
-    char path[PATH_MAX];
     char buf[BUF_SIZE];
-    char uevent[1024];
     DIR *pdir = NULL;
     struct dirent *pdirent = NULL;
     int len = 0;
@@ -2949,25 +2967,14 @@ static bool getCardIdx(uint32_t &card_idx, const zes_device_handle_t& device) {
         if (strstr(pdirent->d_name, "-") != NULL) {
             continue;
         }
-        len = snprintf(path, PATH_MAX, "/sys/class/drm/%s/device/uevent",
-                pdirent->d_name);
-        if (len <= 0 || len >= PATH_MAX) {
-            break;
+        UEvent uevent;
+        if (Utility::getUEvent(uevent, pdirent->d_name) == false) {
+            continue;
         }
-        int fd = open(path, O_RDONLY);
-        if (fd < 0) {
-            break;
-        }
-        int szRead = read(fd, uevent, 1024);
-        close(fd);
-        if (szRead < 0 || szRead >= 1024) {
-            break;
-        }
-        uevent[szRead] = 0;
         len = snprintf(buf, BUF_SIZE, "%04d:%02x:%02x.%x",
                 pci_props.address.domain, pci_props.address.bus,
                 pci_props.address.device, pci_props.address.function);
-        if (len > 0 && strstr(uevent, buf) != NULL) {
+        if (len > 0 && strstr(uevent.bdf.c_str(), buf) != NULL) {
             sscanf(pdirent->d_name, "card%d", &card_idx);
             ret = true;
             break;
