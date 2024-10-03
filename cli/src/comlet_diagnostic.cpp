@@ -148,7 +148,8 @@ std::unordered_map<int, int> testIdToType = {{1, XPUM_DIAG_PERFORMANCE_COMPUTATI
                                                 {6, XPUM_DIAG_PERFORMANCE_POWER},
                                                 {7, XPUM_DIAG_LIGHT_COMPUTATION},
                                                 {8, XPUM_DIAG_LIGHT_CODEC},
-                                                {9, XPUM_DIAG_XE_LINK_THROUGHPUT}};
+                                                {9, XPUM_DIAG_XE_LINK_THROUGHPUT},
+                                                {10,XPUM_DIAG_XE_LINK_ALL_TO_ALL_THROUGHPUT}};
 
 std::unique_ptr<nlohmann::json> ComletDiagnostic::deviceOptToId(int &deviceId, 
     const std::string &deviceOpt) {
@@ -192,7 +193,7 @@ void ComletDiagnostic::setupOptions() {
     auto stressFlag = addFlag("-s,--stress", this->opts->stress, "Stress the GPU(s) for the specified time");
     auto stressTimeOpt = addOption("--stresstime", this->opts->stressTime, "Stress time (in minutes)");
     auto preCheckOpt = addFlag("--precheck", this->opts->preCheck, "Do the precheck on the GPU and GPU driver. By default, precheck scans kernel messages by journalctl.\n\
-It could be configured to scan dmesg or log file through diagnostics.conf.");
+It could be configured to scan dmesg or log file through xpum.conf.");
     auto listErrorTypeOpt = addFlag("--listtypes", this->opts->listErrorType, "List all supported GPU error types");
     auto onlyGPUOpt = addFlag("--gpu", this->opts->onlyGPU, "Show the GPU status only");
     auto sinceTimeOpt = addOption("--since", this->opts->sinceTime, "Start time for log scanning. It only works with the journalctl option. The generic format is \"YYYY-MM-DD HH:MM:SS\".\n\
@@ -201,15 +202,16 @@ Relative times also may be specified, prefixed with \"-\" referring to times bef
 Scanning would start from the latest boot if it is not specified.");
 
 std::string singleTestIdListDesc = "Selectively run some particular tests. Separated by the comma.\n\
-      1. Computation\n\
-      2. Memory Error\n\
-      3. Memory Bandwidth\n\
-      4. Media Codec\n\
-      5. PCIe Bandwidth\n\
-      6. Power\n\
-      7. Computation functional test\n\
-      8. Media Codec functional test\n\
-      9. Xe Link Throughput";
+       1. Computation\n\
+       2. Memory Error\n\
+       3. Memory Bandwidth\n\
+       4. Media Codec\n\
+       5. PCIe Bandwidth\n\
+       6. Power\n\
+       7. Computation functional test\n\
+       8. Media Codec functional test\n\
+       9. Xe Link Throughput\n\
+      10. Xe Link all-to-all Throughput. It only works for all GPUs (\"-d -1\")";
 #ifdef DAEMONLESS  
     singleTestIdListDesc += "\nNote that in a multi NUMA node server, it may need to use numactl to specify which node the PCIe bandwidth test runs on.\n\
 Usage: numactl [ --membind nodes ] [ --cpunodebind nodes ] xpu-smi diag -d [deviceId] --singletest 5\n\
@@ -290,6 +292,12 @@ std::unique_ptr<nlohmann::json> ComletDiagnostic::run() {
                 (*json)["errno"] = XPUM_CLI_ERROR_DIAGNOSTIC_INVALID_SINGLE_TEST;
                 return json;
             }
+        }
+        // XPUM_DIAG_XE_LINK_ALL_TO_ALL_THROUGHPUT only works for all GPUs
+        if (idSet.find(10) != idSet.end() && this->opts->deviceId != "-1") {
+            (*json)["error"] = "invalid single test";
+            (*json)["errno"] = XPUM_CLI_ERROR_DIAGNOSTIC_INVALID_SINGLE_TEST;
+            return json;            
         }
     }
 

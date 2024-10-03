@@ -1,3 +1,9 @@
+xpu-smi (1.2.39-0ubuntu1~24.10~ppa1) oracular; urgency=medium
+
+  * Bump version to 1.2.39 
+
+ -- Pavel Androniychuk <pavel.androniychuk@intel.com>  Thu, 03 Oct 2024 09:36:01 -0700
+
 xpu-smi (1.2.35-0ubuntu1~24.10~ppa2) oracular; urgency=medium
 
   * Changed dependency to intel-gsc 

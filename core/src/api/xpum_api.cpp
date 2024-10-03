@@ -146,6 +146,8 @@ const char *getXpumDevicePropertyNameString(xpum_device_property_name_t name) {
             return "SKU_TYPE";
         case XPUM_DEVICE_PROPERTY_XELINK_CALIBRATION_DATE:
             return "XE_LINK_CALIBRATION_DATE";
+        case XPUM_DEVICE_PROPERTY_DRIVER_PACK_VERSION:
+            return "DRIVER_PACK_VERSION";
         default:
             return "";
     }
@@ -897,6 +899,8 @@ xpum_device_internal_property_name_t getDeviceInternalProperty(xpum_device_prope
             return XPUM_DEVICE_PROPERTY_INTERNAL_SKU_TYPE;
         case XPUM_DEVICE_PROPERTY_XELINK_CALIBRATION_DATE:
             return XPUM_DEVICE_PROPERTY_INTERNAL_XELINK_CALIBRATION_DATE;
+        case XPUM_DEVICE_PROPERTY_DRIVER_PACK_VERSION:
+            return XPUM_DEVICE_PROPERTY_INTERNAL_DRIVER_PACK_VERSION;
         default:
             return XPUM_DEVICE_PROPERTY_INTERNAL_MAX;
     }
@@ -3519,6 +3523,17 @@ xpum_result_t xpumStartDumpRawDataTask(xpum_device_id_t deviceId,
                                        const int count,
                                        const char *dumpFilePath,
                                        xpum_dump_raw_data_task_t *taskInfo) {
+    xpum_dump_raw_data_option_t dumpOptions {};
+    return xpumStartDumpRawDataTaskEx(deviceId, tileId, dumpTypeList, count, dumpFilePath, dumpOptions, taskInfo);
+}
+
+xpum_result_t xpumStartDumpRawDataTaskEx(xpum_device_id_t deviceId,
+                                       xpum_device_tile_id_t tileId,
+                                       const xpum_dump_type_t dumpTypeList[],
+                                       const int count,
+                                       const char *dumpFilePath,
+                                       xpum_dump_raw_data_option_t dumpOptions,
+                                       xpum_dump_raw_data_task_t *taskInfo) {
     xpum_result_t res = Core::instance().apiAccessPreCheck();
     if (res != XPUM_OK) {
         return res;
@@ -3530,7 +3545,7 @@ xpum_result_t xpumStartDumpRawDataTask(xpum_device_id_t deviceId,
         res = validateDeviceIdAndTileId(deviceId, tileId);
     if (res != XPUM_OK)
         return res;
-    return Core::instance().getDumpRawDataManager()->startDumpRawDataTask(deviceId, tileId, dumpTypeList, count, dumpFilePath, taskInfo);
+    return Core::instance().getDumpRawDataManager()->startDumpRawDataTask(deviceId, tileId, dumpTypeList, count, dumpFilePath, dumpOptions, taskInfo);
 }
 
 xpum_result_t xpumStopDumpRawDataTask(xpum_dump_task_id_t taskId, xpum_dump_raw_data_task_t *taskInfo) {

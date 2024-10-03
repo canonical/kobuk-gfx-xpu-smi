@@ -16,6 +16,11 @@
 
 namespace xpum {
 
+struct UEvent {
+    std::string pciId;
+    std::string bdf;
+};
+
 class Utility {
    public:
     static long long getCurrentMillisecond();
@@ -24,11 +29,11 @@ class Utility {
 
     static std::string getCurrentTimeString();
 
-    static std::string getCurrentLocalTimeString();
+    static std::string getCurrentLocalTimeString(bool showData=false);
 
     static std::string getTimeString(long long milliseconds);
 
-    static std::string getLocalTimeString(uint64_t milliseconds);
+    static std::string getLocalTimeString(uint64_t milliseconds, bool showData=false);
 
     static MeasurementType measurementTypeFromCapability(DeviceCapability& capability);
 
@@ -61,6 +66,7 @@ class Utility {
                   bool use_multithreading = true);
    
    static std::vector<std::string> split(const std::string &s, char delim);
+   static bool getUEvent(UEvent &uevent, const char *d_name);
 };
 
 } // end namespace xpum
