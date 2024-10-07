@@ -1,7 +1,7 @@
-Source: xpu-smi
+Source: xpumanager
 Section: devel
 Priority: optional
-Maintainer: The Kobuk Team <kobuk-team@lists.launchpad.net>
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
 Build-Depends:
  debhelper (>= 11),
  autoconf,
@@ -18,16 +18,12 @@ Build-Depends:
  python3-pip,
  libze-dev,
  libigsc-dev,
- libigsc0,
 Standards-Version: 4.3.0
 Homepage: https://github.com/intel/xpumanager
 
 Package: libxpum1
 Architecture: amd64
 Depends:
- libze1 (>= 1.17.6),
- intel-gsc (>=0.9.3),
- libze-intel-gpu1 (>=1.3.23726),
  ${shlibs:Depends},
  ${misc:Depends}
 Recommends:
@@ -37,6 +33,19 @@ Suggests:
  libmfx-tools (>=22.5.0), 
  intel-media-va-driver-non-free (>=22.5.0),
  libmfxgen1 (>=22.5.0)
+Description: Intel(R) XPU System Management Interface(xpu-smi) is a free and
+ open-source solution built on top of the Intel(R) oneAPI Level Zero interface
+ for monitoring and managing Intel Data Center GPUs. It is a fully-fledged
+ solution for GPU administration, location and topology, telemetry, diagnostics,
+ firmware updating, and GPU configuration. It supports local command line
+ interface and local library call interface for third-party solution integration
+
+Package: xpu-smi
+Architecture: amd64
+Depends:
+ libxpum1,
+ ${shlibs:Depends},
+ ${misc:Depends}
 Description: Intel(R) XPU System Management Interface(xpu-smi) is a free and
  open-source solution built on top of the Intel(R) oneAPI Level Zero interface
  for monitoring and managing Intel Data Center GPUs. It is a fully-fledged

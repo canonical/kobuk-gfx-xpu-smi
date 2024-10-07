@@ -1,3 +1,12 @@
+xpumanager (1.2.39-0ubuntu1~24.10~ppa3) oracular; urgency=medium
+
+  * Align source package name with the source name
+  * Remove unnecessary dependencies from the control file
+  * Remove unnecessary dh_install override
+  * Add xpu-smi package
+
+ -- Shane McKee <shane.mckee@canonical.com>  Tue, 08 Oct 2024 00:02:13 +0800
+
 xpu-smi (1.2.39-0ubuntu1~24.10~ppa2) oracular; urgency=medium
 
   * Fix some issues in the copyright file
