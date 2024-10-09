@@ -1,5 +1,4 @@
 Source: xpumanager
-Section: devel
 Priority: optional
 Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
 Build-Depends:
@@ -25,6 +24,9 @@ Homepage: https://github.com/intel/xpumanager
 Package: libxpum1
 Architecture: amd64
 Depends:
+  libze1 (>= 1.17.6),
+  intel-gsc (>=0.9.3),
+  libze-intel-gpu1 (>=1.3.23726),
   ${shlibs:Depends},
   ${misc:Depends}
 Recommends:
@@ -44,7 +46,7 @@ Description: Intel(R) XPU System Management Interface(xpu-smi) is a free and
 Package: xpu-smi
 Architecture: amd64
 Depends:
- libxpum1,
+ libxpum1 (=${binary:Version}),
  ${shlibs:Depends},
  ${misc:Depends}
 Description: Intel(R) XPU System Management Interface(xpu-smi) is a free and
