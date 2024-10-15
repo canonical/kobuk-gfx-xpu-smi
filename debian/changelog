@@ -1,3 +1,9 @@
+xpumanager (1.2.39-0ubuntu1~24.10~ppa4) oracular; urgency=medium
+
+  * Re-add some deps and install -dev libs correctly 
+
+ -- Pavel Androniychuk <pavel.androniychuk@intel.com>  Tue, 15 Oct 2024 15:15:01 -0700
+
 xpumanager (1.2.39-0ubuntu1~24.10~ppa3) oracular; urgency=medium
 
   * Align source package name with the source name
