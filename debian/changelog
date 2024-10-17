@@ -1,3 +1,9 @@
+xpumanager (1.2.39-0ubuntu1~24.10~ppa6) UNRELEASED; urgency=medium
+
+  * Update to Noble 
+
+ -- Shane McKee <shane.mckee@canonical.com>  Fri, 18 Oct 2024 00:26:06 +0800
+
 xpumanager (1.2.39-0ubuntu1~24.10~ppa5) oracular; urgency=medium
 
   * Bump PPA number since ppa4 got uploaded during a test by mistake
