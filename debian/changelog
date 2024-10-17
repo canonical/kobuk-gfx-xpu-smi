@@ -1,3 +1,9 @@
+xpumanager (1.2.39-0ubuntu1~24.10~ppa5) oracular; urgency=medium
+
+  * Bump PPA number since ppa4 got uploaded during a test by mistake
+
+ -- Shane McKee <shane.mckee@canonical.com>  Fri, 18 Oct 2024 00:05:57 +0800
+
 xpumanager (1.2.39-0ubuntu1~24.10~ppa4) oracular; urgency=medium
 
   * Add Section: utils to fix PPA upload issue
