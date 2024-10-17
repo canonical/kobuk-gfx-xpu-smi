@@ -1,4 +1,5 @@
 Source: xpumanager
+Section: utils
 Priority: optional
 Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
 Build-Depends:
