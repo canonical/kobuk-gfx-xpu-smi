@@ -1,3 +1,9 @@
+xpumanager (1.2.41-0ubuntu1~24.10~ppa1) oracular; urgency=medium
+
+  * Update to version 1.2.41 
+
+ -- Pavel Androniychuk <pavel.androniychuk@intel.com>  Wed, 23 Apr 2025 09:27:49 -0700
+
 xpumanager (1.2.39-0ubuntu1~24.10~ppa5) oracular; urgency=medium
 
   * Bump PPA number since ppa4 got uploaded during a test by mistake
