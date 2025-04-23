@@ -7,7 +7,7 @@ ARG METEE_URL=https://github.com/intel/metee/archive/refs/tags/3.1.3.tar.gz
 ARG IGSC_URL=https://github.com/intel/igsc/archive/refs/tags/V0.8.4.tar.gz
 ARG ZLIB_VERSION=v1.3
 ARG GRPC_VERSION=v1.56.2
-ARG CARES_VERSION=cares-1_19_1
+ARG CARES_VERSION=cares-1_29_0
 
 RUN cd /etc/yum.repos.d/ && \
     sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* &&\
@@ -16,8 +16,7 @@ RUN cd /etc/yum.repos.d/ && \
 
 RUN yum install -y epel-release https://packages.endpointdev.com/rhel/7/os/x86_64/endpoint-repo.x86_64.rpm https://repo.ius.io/ius-release-el7.rpm && \
     yum update -y && \
-    yum install -y centos-release-scl \
-        ccache \
+    yum install -y ccache \
         curl \
         doxygen \
         git \
@@ -28,7 +27,9 @@ RUN yum install -y epel-release https://packages.endpointdev.com/rhel/7/os/x86_6
         make \
         openssl-devel \
         rpm-build \
-        which && \
+        which
+RUN yum-config-manager --add-repo=http://vault.centos.org/centos/7/sclo/x86_64/rh/ && \
+    sed -i '/\[vault.centos.org_centos_7_sclo_x86_64_rh_\]/a gpgcheck=0' /etc/yum.repos.d/vault.centos.org_centos_7_sclo_x86_64_rh_.repo && \
     yum install -y devtoolset-9-gcc* \
         rh-python38 \
         rh-python38-python-devel \
